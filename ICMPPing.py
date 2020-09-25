@@ -1,5 +1,7 @@
-#!/usr/bin/python
-
+"""
+    A pure python ping implementation using raw socket.
+    Copyright (c) Lin Yunqi 18722016 ,department of Computer and Information Technology, 2020
+"""
 
 import socket
 import os
@@ -7,7 +9,6 @@ import sys
 import struct
 import time
 import select
-import binascii
 
 ICMP_ECHO_REQUEST = 8  # ICMP type code for echo request messages
 ICMP_ECHO_REPLY = 0  # ICMP type code for echo reply messages
@@ -90,7 +91,7 @@ def sendOnePing(icmpSocket, destinationAddress, ID):
     packet = header + data
 
     # 2. Checksum ICMP packet using given function
-    my_checksum = checksum(packet) #&0xFFFF
+    my_checksum = checksum(packet)
 
     # 3. Insert checksum into packet
     header = struct.pack("bbHHH", ICMP_ECHO_REQUEST, 0, my_checksum, ID, 1)
@@ -107,35 +108,40 @@ def doOnePing(destinationAddress, timeout):
 
     # 2. Call sendOnePing function
     myID = os.getpid() & 0xFFFF
-    sendOnePing(mySocket,destinationAddress,myID)
+    sendOnePing(mySocket, destinationAddress, myID)
     # 3. Call receiveOnePing function
-    delay=receiveOnePing(mySocket,myID,timeout)
+    delay = receiveOnePing(mySocket, myID, timeout)
     # 4. Close ICMP socket
     mySocket.close()
     # 5. Return total network delay
     return delay
 
 
+def ping(host, timeout=1,count=4):
 
-def ping(host, timeout=1):
+    delayList=[]
     # 1. Look up hostname, resolving it to an IP address
-    for i in range(4):
-        print("ping {}...".format(host))
-    # 2. Call doOnePing function, approximately every second
+    for i in range(count):
+        print("ping {}...".format(host),end=" ")
+        # 2. Call doOnePing function, approximately every second
         try:
-            delay=doOnePing(host,timeout)
+            delay = doOnePing(host, timeout)
         except socket.gaierror as e:
             print(e)
-            break
-        if delay==-1:
+            exit()
+        if delay == -1:
             print('failed. Timeout within {} seconds.'.format(timeout))
         else:
-            delay=delay*1000
-            print('get ping in %.4fms'% delay)
+            delay = delay * 1000
+            delayList.append(delay)
+            print('get ping in %.0fms' % delay)
     print()
-    # 3. Print out the returned delay
-    # 4. Continue this process until stopped
+    print("Statistical info from {} :".format(socket.gethostbyname(host)))
+    print("    Packet: sent={}, received={}, lost={}".format(count,len(delayList),(count-len(delayList))))
+    print("The estimated time of the round trip (measured in millisecond):")
+    print("    min=%.0fms, max=%.0fms, avg=%.0fms"%(min(delayList),max(delayList),(sum(delayList)/len(delayList))))
 
 
 
 ping("lancaster.ac.uk")
+
