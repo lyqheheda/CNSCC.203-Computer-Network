@@ -142,6 +142,6 @@ def ping(host, timeout=1,count=4):
     print("    min=%.0fms, max=%.0fms, avg=%.0fms"%(min(delayList),max(delayList),(sum(delayList)/len(delayList))))
 
 
-
-ping("lancaster.ac.uk")
+if __name__ =="__main__":
+    ping("lancaster.ac.uk")
 
