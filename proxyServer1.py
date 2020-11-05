@@ -6,7 +6,6 @@
 
 from socket import *
 import re
-import sys
 
 
 def startProxy(serverAddr, port):
@@ -23,49 +22,51 @@ def handleRequest(serverSocket):
     connectionSocket, addr = serverSocket.accept()
     message = connectionSocket.recv(1024).decode()
     url = re.split("/", message, 3)[2]
-    #print(url)
+    # print(url)
+
+    try:
+        file = open("webPage.html", "r")
+    except:
+        file = open("webPage.html", "w")
+        file.close()
+        file = open("webPage.html", "r")
 
     # check if the requested file already exists
-    try:
-        file=open("webPage.html","r")
-    except:
-
-        pass
+    content = file.read()
+    file.close()
+    if re.search(url, content):
+        print("The file is already in the proxy")
+        statusLine = "HTTP/1.1 200 OK\r\n"
+        responseToClient = statusLine + "\r\n" + content
+        connectionSocket.send(responseToClient.encode())
+        connectionSocket.close()
     else:
-        content=file.read()
-        if re.search(url,content):
+        print("Requesting the file from the host...")
+        # connect to the host
+        serverName = url
+        serverPort = 80
+        clientSocket = socket(AF_INET, SOCK_STREAM)
+        clientSocket.connect((serverName, serverPort))
+        fullUrl = "http://" + url + "/"
+        request = "GET " + fullUrl + " HTTP/1.1\r\n" + "Host: " + url + "\r\n\r\n"
 
+        clientSocket.send(request.encode())
+        response = clientSocket.recv(1024).decode()
 
+        # Download the response html file into disk
+        f = open("webPage.html", 'w')
+        html = re.split("\r\n", response, 100)[-1]
+        # print(html)
+        f.write(html)
+        f.close()
+        # generate a http response
+        statusLine = "HTTP/1.1 200 OK\r\n"
+        responseToClient = statusLine + "\r\n" + html
 
-    # if :
-    #     #The webpage is cached
-    #     pass
-    # else:
-    # send http request to the specified host
-    serverName = url
-    serverPort = 80
-    clientSocket = socket(AF_INET, SOCK_STREAM)
-    clientSocket.connect((serverName, serverPort))
-    fullUrl="http://"+url+"/"
-    request="GET "+fullUrl+" HTTP/1.1\r\n"+"Host: "+url+"\r\n\r\n"
+        # Transfer the html file to client
+        connectionSocket.send(responseToClient.encode())
 
-    clientSocket.send(request.encode())
-    response=clientSocket.recv(1024).decode()
-
-    # Download the response html file into disk
-    f = open("webPage.html", 'w')
-    html=re.split("\r\n",response,100)[-1]
-    #print(html)
-    f.write(html)
-    f.close()
-    # generate a http response
-    statusLine = "HTTP/1.1 200 OK\r\n"
-    responseToClient=statusLine + "\r\n" +html
-
-    # Transfer the html file to client
-    connectionSocket.send(responseToClient.encode())
-
-    connectionSocket.close()
+        connectionSocket.close()
 
 
 if __name__ == "__main__":
