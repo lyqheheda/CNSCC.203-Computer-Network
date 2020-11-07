@@ -5,6 +5,7 @@
 """
 
 from socket import *
+import select
 import re
 
 
@@ -21,9 +22,9 @@ def startProxy(serverAddr, port):
 def handleRequest(serverSocket):
     connectionSocket, addr = serverSocket.accept()
     message = connectionSocket.recv(1024).decode()
+    #print(message)
     url = re.split("/", message, 3)[2]
-    # print(url)
-
+    print(url)
     try:
         file = open("webPage.html", "r")
     except:
@@ -43,19 +44,29 @@ def handleRequest(serverSocket):
     else:
         print("Requesting the file from the host...")
         # connect to the host
-        serverName = url
+       # print(url)
+        serverName = gethostbyname(url)
+       # print(serverName)
         serverPort = 80
         clientSocket = socket(AF_INET, SOCK_STREAM)
         clientSocket.connect((serverName, serverPort))
         fullUrl = "http://" + url + "/"
         request = "GET " + fullUrl + " HTTP/1.1\r\n" + "Host: " + url + "\r\n\r\n"
-
         clientSocket.send(request.encode())
-        response = clientSocket.recv(1024).decode()
 
+        response=""
+        clientSocket.setblocking(0)
+        while True:
+            ready = select.select([clientSocket], [], [], 2)
+            if ready[0]:
+                response += clientSocket.recv(4096).decode("gbk", "ignore")
+            else:
+                break
+        clientSocket.close()
+        print(response)
         # Download the response html file into disk
         f = open("webPage.html", 'w')
-        html = re.split("\r\n", response, 100)[-1]
+        html = "<html"+re.split("<html", response, 10)[-1] 
         # print(html)
         f.write(html)
         f.close()
